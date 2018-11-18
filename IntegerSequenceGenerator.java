@@ -125,7 +125,7 @@ public class IntegerSequenceGenerator {
 		xCurr = viewNext();
 		return xCurr;
 	}
-	
+
 	/**
 		Generate
 		Generates next n pseudorandom numbers from current
