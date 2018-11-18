@@ -1,3 +1,7 @@
+import java.util.*;
+import javafx.util.Pair;
+import java.lang.*;
+
 /**
 	Queue Process
 	This class implements a representation for a queue system with
@@ -20,8 +24,9 @@ public class QueueProcess {
 	private int currSystemTime;	// In seconds
 	private int nextClientArrivalTime; // In seconds
 	private IntegerSequenceGenerator generator;
-	private int[] timeToReleaseServer;	// Server-wise time to release the resource
-	private int clientQueueSize;
+	private ServerState[] serverStateArr; // Server-wise state <clientID, timeToReleaseServer>
+	private Queue<Integer> clientQueue;
+	private int arrivedClientsCount; // The count of clients who have arrived.
 	private int servedClientsCount; // The count of clients that have already been served.
 	
 	/**
@@ -78,12 +83,15 @@ public class QueueProcess {
 			this.handleInvalidQueueProcess();
 
 		this.nextClientArrivalTime = 0;
-		this.clientQueueSize = 0;
 		this.currSystemTime = 0;
-		this.timeToReleaseServer = new int[servers];
+		this.serverStateArr = new ServerState[this.servers];
 
-		this.clientQueue = new Queue<>();
+		for(int i = 0; i < this.servers; i++)
+			this.serverStateArr[i] = new ServerState();
+
+		this.clientQueue = new LinkedList<>();
 		this.servedClientsCount = 0;
+		this.arrivedClientsCount = 0;
 	}
 
 	/**
@@ -128,27 +136,9 @@ public class QueueProcess {
 	}
 
 	/**
-	 * 
+	 * Main method for running the simulation
 	 */
 	public void runSimulation(){
-
-		// We assume that the first client always arrives at time 0 seconds.
-
-		// The total time required to serve the first client.
-		int firstClientServiceTime = (int) Math.ceil(this.serviceTime * (1.0 + this.normalizedNext()));
-
-		int firstAvailableServerIndex = this.getFirstAvailableServerIndex();
-
-		if(firstAvailableServerIndex >= 0){
-
-			this.assignClientToServer(firstClientServiceTime, firstAvailableServerIndex);
-		}
-		else{
-
-			this.placeClientInQueue(firstClientServiceTime);
-		}
-
-		servedClientsCount++;
 
 		while(servedClientsCount < this.clients){
 			
@@ -162,11 +152,22 @@ public class QueueProcess {
 			*/
 
 			this.updateTimeToReleaseServersTime();
-			this.enqueueNewClient();
+
+			if(this.arrivedClientsCount < this.clients)
+				this.enqueueNewClient();
+
 			this.serveAllPossibleClients();
 
-			// Sleep for 1 second to make the simulation realistic
-			System.sleep(1000);
+			try{
+
+				// Sleep for 1 second to make the simulation realistic
+				Thread.sleep(10);
+			}
+			catch(InterruptedException ie){
+
+				// Do nothing!
+			}
+
 			this.currSystemTime++;
 		}
 	}
@@ -180,12 +181,16 @@ public class QueueProcess {
 			
 			// Update the time only if the server is not 
 			// currently available.
-			if(this.timeToReleaseServer[i] > 0){
+			if(this.serverStateArr[i].getTimeToReleaseServer() > 0){
 
-				this.timeToReleaseServer[i]--;
+				this.serverStateArr[i].tick();
 
-				if(this.timeToReleaseServer[i] == 0)
+				if(this.serverStateArr[i].getTimeToReleaseServer() == 0){
+
+					System.out.print(this.getSystemTimeStamp() + " : ");
+					System.out.println("Server #" + (i + 1) + " finished serving client #" + this.serverStateArr[i].getClientId() + ".");
 					this.servedClientsCount++;
+				}
 			}
 		}
 	}
@@ -198,38 +203,79 @@ public class QueueProcess {
 		// If a client just arrived
 		if(this.currSystemTime == this.nextClientArrivalTime){
 
-			this.placeClientInQueue(this.nextRandomServiceTime());
+			this.arrivedClientsCount++;
+			System.out.print(this.getSystemTimeStamp() + " : ");
+			System.out.println("Client #" + this.arrivedClientsCount + " arrived.");
+
+			if(this.computeAvailableServers() <= this.clientQueue.size()){
+
+				System.out.print(this.getSystemTimeStamp() + " : ");
+				System.out.println("Client #" + this.arrivedClientsCount + " is waiting for a server to become available.");
+			}
+
+			this.clientQueue.add(this.arrivedClientsCount);
 			
 			// Compute the next arrival time
 			this.nextClientArrivalTime = this.nextRandomArrivalTime();
 		}
 	}
 
+	/**
+	 * Method to return a string corresponding to the current system
+	 * timestamp
+	 * @return a string corresponding to the current system
+	 * timestamp
+	 */
+	public String getSystemTimeStamp(){
+
+		int currSystemSeconds = this.currSystemTime % 60;
+		int currSystemMinutes = (this.currSystemTime % 3600)/60;
+		int currSystemHours = this.currSystemTime / 3600;
+
+		return String.format("%02d:%02d:%02d", currSystemHours, currSystemMinutes, currSystemSeconds);
+	}
+
+	/**
+	 * Method that computes the amount of available servers.
+	 * @return availableServersCount the amount of available servers.
+	 */
+	public int computeAvailableServers(){
+
+		int availableServersCount = 0;
+
+		for(int i = 0; i < this.servers; i++)
+			if(this.serverStateArr[i].getTimeToReleaseServer() == 0)
+				availableServersCount++;
+
+		return availableServersCount;
+	}
+
+	/**
+	 * Method that assigns a client to a given server with a random
+	 * service time.
+	 * @param serverIndex the index of the server that will 
+	 * service the client
+	 */
+	public void serveClient(int serverIndex){
+
+		int nextClientId = this.clientQueue.remove();
+		this.serverStateArr[serverIndex].setClientId(nextClientId);
+		this.serverStateArr[serverIndex].setTimeToReleaseServer(this.nextRandomServiceTime());
+		System.out.print(this.getSystemTimeStamp() + " : ");
+		System.out.println("Client #" + nextClientId + " is being served by server #" + (serverIndex + 1) + ".");
+	}
+
+	/**
+	 * Method that serves all possible clients
+	 */
 	public void serveAllPossibleClients(){
 
+		int serverIndex = -1;
 
-	}
+		while((serverIndex = this.getFirstAvailableServerIndex()) >= 0 && this.clientQueue.size() > 0){
 
-	/**
-	 * Method that adds a client to the queue, because no servers
-	 * were available at the client's arrival time.
-	 * @param clientServiceTime the total time required to serve 
-	 * the client.
-	 */
-	void placeClientInQueue(int clientServiceTime){
-
-		this.clientQueueSize++;
-	}
-
-	/**
-	 * Method that assigns a client to a server
-	 * @param clientServiceTime the total time required to serve the client.
-	 * @param firstAvailableServerIndex the index of the server to which the 
-	 * client will be assigned.
-	 */
-	void assignClientToServer(int clientServiceTime, int firstAvailableServerIndex){
-
-		this.timeToReleaseServer[firstAvailableServerIndex] = clientServiceTime;
+			this.serveClient(serverIndex);
+		}
 	}
 
 	/**
@@ -241,7 +287,7 @@ public class QueueProcess {
 	int getFirstAvailableServerIndex(){
 
 		for(int i = 0; i < this.servers; i++)
-			if(this.timeToReleaseServer[i] == 0)
+			if(this.serverStateArr[i].getTimeToReleaseServer() == 0)
 				return i;
 
 		return -1;
@@ -289,6 +335,6 @@ public class QueueProcess {
 	 */
 	public int nextRandomTime(int time){
 
-		return Math.ceil(time * (1.0 + this.normalizedNext()));
+		return (int) Math.ceil(time * (1.0 + this.normalizedNext()));
 	}
 }
