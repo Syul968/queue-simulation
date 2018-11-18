@@ -21,7 +21,7 @@ public class QueueProcess {
 	private int nextClientArrivalTime; // In seconds
 	private IntegerSequenceGenerator generator;
 	private int[] timeToReleaseServer;	// Server-wise time to release the resource
-	private Queue<Integer> clientQueue;
+	private int clientQueueSize;
 	private int servedClientsCount; // The count of clients that have already been served.
 	
 	/**
@@ -78,6 +78,7 @@ public class QueueProcess {
 			this.handleInvalidQueueProcess();
 
 		this.nextClientArrivalTime = 0;
+		this.clientQueueSize = 0;
 		this.currSystemTime = 0;
 		this.timeToReleaseServer = new int[servers];
 
@@ -163,6 +164,9 @@ public class QueueProcess {
 			this.updateTimeToReleaseServersTime();
 			this.enqueueNewClient();
 			this.serveAllPossibleClients();
+
+			// Sleep for 1 second to make the simulation realistic
+			System.sleep(1000);
 			this.currSystemTime++;
 		}
 	}
@@ -186,13 +190,24 @@ public class QueueProcess {
 		}
 	}
 
+	/**
+	 * Method that adds a new client to the client (waiting) queue. 
+	 */
 	public void enqueueNewClient(){
 
+		// If a client just arrived
 		if(this.currSystemTime == this.nextClientArrivalTime){
 
 			this.placeClientInQueue(this.nextRandomServiceTime());
+			
+			// Compute the next arrival time
 			this.nextClientArrivalTime = this.nextRandomArrivalTime();
 		}
+	}
+
+	public void serveAllPossibleClients(){
+
+
 	}
 
 	/**
@@ -203,7 +218,7 @@ public class QueueProcess {
 	 */
 	void placeClientInQueue(int clientServiceTime){
 
-		this.clientQueue.add(clientServiceTime);
+		this.clientQueueSize++;
 	}
 
 	/**
