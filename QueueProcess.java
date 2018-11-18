@@ -13,8 +13,8 @@
 public class QueueProcess {
 	private int servers;
 	private int clients;
-	private int arrivalsRate;	// Per minute
-	private int serviceRate;	// Per minute
+	private int arrivalsInterval;	// in seconds
+	private int serviceTime;	// in seconds, per server
 	
 	private int time;	// In seconds
 	private IntegerSequenceGenerator generator;
@@ -27,17 +27,17 @@ public class QueueProcess {
 		@param	generator		Pseudo-random numbers generator.
 		@param	clients			Number of clients that will arrive.
 		@param	servers			Number of servers in the system.
-		@param	arrivalsRate	Arrivals per minute.
-		@param	serviceRate		Serviced clients per minute per server.
+		@param	arrivalsRateM	Arrivals per minute.
+		@param	serviceRateM	Serviced clients per minute, whole system.
 	*/
 	public QueueProcess(IntegerSequenceGenerator generator, int clients, 
-		int servers, int arrivalsRate, int serviceRate) {
+		int servers, int arrivalsRateM, int serviceRateM) {
 		this.generator = generator;
 		
 		this.clients = clients;
 		this.servers = servers;
-		this.arrivalsRate = arrivalsRate;
-		this.serviceRate = serviceRate;
+		this.arrivalsInterval = arrivalsRateToTime(arrivalsRateM);
+		this.serviceTime = serviceRateToTime(serviceRateM);
 		
 		this.time = 0;
 		this.timeToRelease = new int[servers];
