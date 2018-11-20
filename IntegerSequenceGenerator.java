@@ -17,6 +17,7 @@ public class IntegerSequenceGenerator {
 	private int multiplier;
 	private int increment;
 	private int seed;
+	private boolean returnedSeed;	// To allow returning the seed first
 	
 	private int xCurr;	//	Saves state
 	
@@ -38,6 +39,8 @@ public class IntegerSequenceGenerator {
 			System.out.println("Parameters are not valid");
 			System.exit(0);	//	Prevent unknown behaviour from bad parameters
 		}
+		
+		this.returnedSeed = false;	// To allow returning the seed first
 	}
 	
 	/**
@@ -119,9 +122,14 @@ public class IntegerSequenceGenerator {
 	/**
 		Next
 		Get the next pseudorandom number and save state.
+		Please note this will return the seed as first element.
 		@return		Next pseudorandom number.
 	*/
 	public int next() {
+		if(!this.returnedSeed) {
+			this.returnedSeed = !this.returnedSeed;
+			return this.seed;
+		}
 		xCurr = viewNext();
 		return xCurr;
 	}

@@ -161,7 +161,7 @@ public class QueueProcess {
 			try{
 
 				// Sleep for 1 second to make the simulation realistic
-				Thread.sleep(10);
+				Thread.sleep(1000);
 			}
 			catch(InterruptedException ie){
 
