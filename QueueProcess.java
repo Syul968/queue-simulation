@@ -151,10 +151,10 @@ public class QueueProcess {
 				4. Increment the system current time.
 			*/
 
-			this.updateTimeToReleaseServersTime();
+			this.updateTimeToReleaseServers();
 
 			if(this.arrivedClientsCount < this.clients)
-				this.enqueueNewClient();
+				this.checkForNewClients();
 
 			this.serveAllPossibleClients();
 
@@ -175,7 +175,7 @@ public class QueueProcess {
 	/**
 	 * Method that updates the time to release each server.
 	 */
-	public void updateTimeToReleaseServersTime(){
+	public void updateTimeToReleaseServers(){
 
 		for(int i = 0; i < this.servers; i++){
 			
@@ -196,9 +196,10 @@ public class QueueProcess {
 	}
 
 	/**
-	 * Method that adds a new client to the client (waiting) queue. 
+	 * Method that checks if a new client arrives, and adds it to the client
+	 * (waiting) queue if so. 
 	 */
-	public void enqueueNewClient(){
+	public void checkForNewClients(){
 
 		// If a client just arrived
 		if(this.currSystemTime == this.nextClientArrivalTime){
@@ -216,7 +217,8 @@ public class QueueProcess {
 			this.clientQueue.add(this.arrivedClientsCount);
 			
 			// Compute the next arrival time
-			this.nextClientArrivalTime = this.nextRandomArrivalTime();
+			if(this.arrivedClientsCount < this.clients)
+				this.nextClientArrivalTime = this.nextRandomArrivalTime();
 		}
 	}
 
@@ -304,7 +306,7 @@ public class QueueProcess {
 		double next = (double) this.generator.next();
 		next = next/(this.generator.getMod() - 1.0);
 		next -= 0.5F;
-
+		
 		return next;
 	}
 		
